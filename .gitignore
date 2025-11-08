@@ -1,2 +1,4 @@
 venv/
 notes.md
+images/
+__pycache__/
