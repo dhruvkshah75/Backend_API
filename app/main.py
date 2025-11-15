@@ -1,16 +1,21 @@
-from fastapi import FastAPI, Response, status, HTTPException
+from fastapi import FastAPI, Response, status, HTTPException, Depends
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
 import time
+from . import models
+from .database import engine, get_db
+from sqlalchemy.orm import Session
 
 load_dotenv()
 
+models.Base.metadata.create_all(bind=engine)
+
 app = FastAPI()
 
-# class post extends the BaseModel
+
 class Post(BaseModel):
     title: str
     content: str
@@ -34,20 +39,10 @@ while True:
         print(f"Error connecting to the database! Error: {error}")
         time.sleep(3)
 
-# list to store data of each posts
-# hardcoded 2 values 
-my_posts = [
-    {
-        "title": "title of post 1",
-        "content": "content of post 1",
-        "id": 1
-    },
-    {
-        "title": "favourite foods",
-        "content": "I like pizza",
-        "id": 2
-    }
-]  
+@app.get("/test_post")
+def test_posts(db: Session = Depends(get_db)):
+    return { "status": "success"}
+
 
 # this is called path operation 
 @app.get("/")
@@ -76,13 +71,6 @@ def create_posts(post: Post):
 
     return {"post detail": new_post}
 
-
-
-def find_id(post_id: int):
-    for p in my_posts:
-        if p['id'] == post_id:
-            return p
-    return None
 
 
 @app.get("/posts/{id}")
