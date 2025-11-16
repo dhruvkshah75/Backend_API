@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Response, status, HTTPException, Depends
-from . import models, schemas
+from . import models, schemas, utils
 from .database import engine, get_db
 from sqlalchemy.orm import Session
 from typing import List
@@ -74,3 +74,29 @@ def update_posts(id: int, post: schemas.PostBase, db: Session=Depends(get_db)):
     return modified_post 
 
 
+# USER crud operations
+
+@app.post("/users", status_code=status.HTTP_201_CREATED, response_model=schemas.UserResponse)
+def create_user(user: schemas.UserCreate, db: Session=Depends(get_db)):
+
+    # hash the password 
+    hashed_password = utils.hash(user.password)
+    user.password = hashed_password
+    new_user = models.user(**user.model_dump())
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
+
+
+@app.get("/users/{id}", response_model=schemas.UserResponse)
+def get_user(id: int, db: Session=Depends(get_db)):
+    user_search_query = db.query(models.User).filter(models.User.id == id)
+
+    if user_search_query.first() == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="User with id: {id} not found")
+    
+    user_data = user_search_query.first()
+    return user_data
