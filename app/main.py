@@ -1,50 +1,25 @@
 from fastapi import FastAPI, Response, status, HTTPException, Depends
 from pydantic import BaseModel
-from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import RealDictCursor
-import os
+
 import time
 from . import models
 from .database import engine, get_db
 from sqlalchemy.orm import Session
 
-load_dotenv()
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-
+# The schema of the post data (user input)
 class Post(BaseModel):
     title: str
     content: str
     published: bool = True
 
-while True:
-    try:
-        conn = psycopg2.connect(
-            host=os.getenv("DB_HOST"),
-            database=os.getenv("DB_NAME"),
-            user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASSWORD"),
-            port=os.getenv("DB_PORT"),
-            cursor_factory=RealDictCursor
-        )
-        cursor = conn.cursor()
-        print("Database connected successfully!")
-        break
-    
-    except Exception as error:
-        print(f"Error connecting to the database! Error: {error}")
-        time.sleep(3)
 
-@app.get("/test_post")
-def test_posts(db: Session = Depends(get_db)):
-    return { "status": "success"}
-
-
-# this is called path operation 
 @app.get("/")
 async def root():
     return {
@@ -53,30 +28,27 @@ async def root():
 
 
 @app.get("/posts")
-def get_posts():
-    cursor.execute("""SELECT * FROM posts""")
-    posts = cursor.fetchall() 
-    return { "post detail": posts }
+def get_posts(db: Session=Depends(get_db)):
+    posts = db.query(models.posts).all()
+    return { "posts details": posts }
 
 
 
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
-def create_posts(post: Post):
-    cursor.execute(
-        """ INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING * """, 
-        (post.title, post.content, post.published)
-    )
-    new_post = cursor.fetchone()
-    conn.commit()
-
+def create_posts(post: Post, db: Session=Depends(get_db)):
+    # 'model_dump()' converts the Pydantic model to a dictionary.
+    # '**' unpacks that dictionary into arguments.
+    new_post = models.Post(**post.model_dump())
+    db.add(new_post)
+    db.commit()
+    db.refresh(new_post)
     return {"post detail": new_post}
 
 
 
 @app.get("/posts/{id}")
-def get_posts(id: int):
-    cursor.execute(""" SELECT * FROM posts WHERE id = %s """, (str(id),))
-    post = cursor.fetchone()
+def get_posts(id: int, db: Session=Depends(get_db)):
+    post = db.query(models.Post).filter(models.Post.id == id).first()
     if not post: 
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                             detail = f"Post with id: {id} was not found")
@@ -86,29 +58,32 @@ def get_posts(id: int):
 
 
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_post(id: int):
-    cursor.execute(""" DELETE FROM posts WHERE id = %s RETURNING * """, (str(id),))
-    deleted_post = cursor.fetchone()
-    if deleted_post == None:
+def delete_post(id: int, db: Session=Depends(get_db)):
+    
+    post_query = db.query(models.Post).filter(models.Post.id == id)
+
+    if post_query.first() == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                             detail=f"The post with id: {id} not found") 
-    
-    conn.commit()
+    else:
+        post_query.delete(synchronize_session=False)
+        db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 
 @app.put("/posts/{id}")
-def update_posts(id: int, post: Post):
-    cursor.execute(""" UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING * """, 
-                   (post.title, post.content, post.published, str(id),))
-    modified_post = cursor.fetchone()
+def update_posts(id: int, post: Post, db: Session=Depends(get_db)):
 
-    if modified_post == None:
+    post_query = db.query(models.Post).filter(models.Post.id == id)
+
+    if post_query.first() == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                             detail=f"The post with id: {id} not found")
-    
-    conn.commit()
+    else:
+        post_query.update(post.model_dump(), synchronize_session=False)
+        db.commit()
+        modified_post = post_query.first()
     return { "post detail": modified_post }
 
 
