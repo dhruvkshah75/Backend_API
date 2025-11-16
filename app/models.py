@@ -13,3 +13,9 @@ class Post(Base):
     published = Column(Boolean, server_default='True', nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), 
                         nullable=False, server_default=text('now()'))
+
+
+class user(Base):
+    __tablename__ = "users"
+
+    
