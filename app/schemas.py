@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime 
+from typing import Optional
 
 
 # The schema of the post data (user input)
@@ -35,3 +36,18 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
+
+# schema for the user login information
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class Token_data(BaseModel):
+    id: Optional[int] = None
