@@ -13,7 +13,7 @@ router = APIRouter(
 def get_posts(db: Session=Depends(get_db), 
               current_user: dict = Depends(oauth2.get_current_user)):
     
-    posts = db.query(models.Post).filter(models.Post.id == current_user.id).all()
+    posts = db.query(models.Post).filter(models.Post.owner_id == current_user.id).all()
     return posts
 
 
