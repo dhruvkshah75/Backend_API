@@ -62,7 +62,7 @@ def get_user(id: int, db: Session=Depends(get_db)):
 
 @router.get("/{id}/posts", response_model=List[schemas.PostResponse])
 def get_user_posts(id: int, db: Session=Depends(get_db),
-                   current_user: dict = Depends(oauth2.get_current_user)):
+                   current_user: dict = Depends(oauth2.get_current_user), limit: int=10, skip: int=0):
     """
     We go the /users/id/posts to get all the posts posted by a particular account. 
     First we check if the user id is valid or not and then return the feilds to the user.
@@ -75,7 +75,7 @@ def get_user_posts(id: int, db: Session=Depends(get_db),
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                             details="Account with id: {id} not found.")
     else:
-        posts_by_user = db.query(models.Post).filter(models.Post.owner_id == id).all()
+        posts_by_user = db.query(models.Post).filter(models.Post.owner_id == id).limit(limit).offset(skip).all()
 
         return posts_by_user
 
