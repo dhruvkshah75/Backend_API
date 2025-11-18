@@ -26,12 +26,14 @@ class PostResponse(PostBase):
 # schema for the user creation
 class UserCreate(BaseModel):
     email: EmailStr
+    username_id: str
     password: str
 
 
 class UserResponse(BaseModel):
     id: int
     email: EmailStr
+    username_id: str
     created_at: datetime
 
     class Config:
@@ -41,7 +43,7 @@ class UserResponse(BaseModel):
 
 # schema for the user login information
 class UserLogin(BaseModel):
-    email: EmailStr
+    identifier: str
     password: str
 
 
