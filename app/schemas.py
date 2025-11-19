@@ -58,3 +58,21 @@ class PostResponse(PostBase):
 
 
 
+class CommentCreate(BaseModel):
+    content: str
+
+# What you send back
+class CommentResponse(BaseModel):
+    id: int
+    content: str
+    created_at: datetime
+    post_id: int
+    owner_id: int
+    owner: UserResponse # return the user details 
+    parent_post: PostResponse  # return the parent post detail
+    
+    class Config:
+        from_attributes = True
+
+
+

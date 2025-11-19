@@ -28,3 +28,21 @@ class User(Base):
     username_id = Column(String, nullable=False, unique=True)
     created_at = Column(TIMESTAMP(timezone=True), 
                         nullable=False, server_default=text('now()'))
+    
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id = Column(Integer, primary_key=True, nullable=False)
+    content = Column(String, nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True),
+                        nullable=False, server_default=text('now()'))
+    
+    # Link to the user
+    owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # Link to the parent post 
+    post_id =Column(Integer, ForeignKey("posts.id", ondelete="CASCADE"), nullable=False)
+
+    owner = relationship("User") 
+    parent_post = relationship("Post")
