@@ -1,6 +1,4 @@
 venv/
 .env
 notes/
-__pycache__
-app/__pycache__
-app/routers/__pycache__
+**/__pycache__
