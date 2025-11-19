@@ -3,7 +3,7 @@ from fastapi import FastAPI, Response, status, HTTPException, Depends, APIRouter
 from sqlalchemy.orm import Session
 from ..database import get_db
 from sqlalchemy import or_
-from typing import List
+from typing import List, Optional
 
 router = APIRouter(
     prefix="/users",
@@ -47,6 +47,7 @@ def create_user(user_credentials: schemas.UserCreate, db: Session=Depends(get_db
     return new_user
 
 
+
 @router.get("/{id}", response_model=schemas.UserResponse)
 def get_user(id: int, db: Session=Depends(get_db)):
     user_search_query = db.query(models.User).filter(models.User.id == id)
@@ -60,9 +61,11 @@ def get_user(id: int, db: Session=Depends(get_db)):
 
 
 
+# get all the posts by a user
 @router.get("/{id}/posts", response_model=List[schemas.PostResponse])
 def get_user_posts(id: int, db: Session=Depends(get_db),
-                   current_user: dict = Depends(oauth2.get_current_user), limit: int=10, skip: int=0):
+                   current_user: dict = Depends(oauth2.get_current_user), limit: int=10, skip: int=0,
+                   search: Optional[str] = ""):
     """
     We go the /users/id/posts to get all the posts posted by a particular account. 
     First we check if the user id is valid or not and then return the feilds to the user.
@@ -75,7 +78,46 @@ def get_user_posts(id: int, db: Session=Depends(get_db),
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                             details="Account with id: {id} not found.")
     else:
-        posts_by_user = db.query(models.Post).filter(models.Post.owner_id == id).limit(limit).offset(skip).all()
+        posts_by_user_query = db.query(models.Post).filter(models.Post.owner_id == id)
 
-        return posts_by_user
+        if search:
+            posts_by_user = posts_by_user_query.filter(
+                or_(
+                    models.Post.content.ilike(f"%{search}%"),
+                    models.Post.title.ilike(f"%{search}%")
+                )
+            ).limit(limit).offset(skip).all()
 
+            return posts_by_user
+        else:
+            return posts_by_user_query.limit(limit).offset(skip).all()
+
+
+
+# comments made a particular user 
+@router.get("/{user_id}/comments", response_model=List[schemas.CommentResponse])
+def get_comments_by_user(user_id: int, db: Session=Depends(get_db), 
+                         curren_user: dict = Depends(oauth2.get_current_user), limit: int=10, skip: int=0, 
+                         search: Optional[str] = ""):
+    """
+    We get the comments made by a particular user. 
+    First we check if the user id exists or not
+    """
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+                            detail=f"User with id: {user_id} not found.")
+
+    comments_query = db.query(models.Comment).filter(
+        models.Comment.owner_id == user_id
+    ).limit(limit).offset(skip)
+
+    if search:
+        # Use ilike for case-insensitive partial match
+        comments_query = comments_query.filter(
+            models.Comment.content.ilike(f"%{search}%")
+        )
+
+    comments = comments_query.all()
+
+    return comments

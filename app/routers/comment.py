@@ -1,7 +1,8 @@
 from fastapi import HTTPException, status, APIRouter, Depends, Response
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from .. import schemas, oauth2, database, models
-from typing import List
+from typing import List, Optional
 
 router = APIRouter(
     tags=['Comments']
@@ -33,9 +34,11 @@ def create_comment(id_post: int, Comment_details: schemas.CommentCreate, db: Ses
 
 
 
+
 @router.get("/posts/{id_post}/comments", response_model=List[schemas.CommentResponse])
 def get_all_comments(id_post: int, db: Session=Depends(database.get_db),
-                     current_user: dict = Depends(oauth2.get_current_user), limit: int=10, skip: int=0):
+                     current_user: dict = Depends(oauth2.get_current_user), limit: int=10, skip: int=0, 
+                     search: Optional[str] = ""):
     """
     Get all the comments to a single post
     """
@@ -46,14 +49,24 @@ def get_all_comments(id_post: int, db: Session=Depends(database.get_db),
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f'Post with the id: {id_post} not found')
     else:
-        comments = db.query(models.Comment).filter(models.Comment.post_id == id_post).limit(limit).offset(skip).all()
+        comments_query = db.query(models.Comment).filter(
+                models.Comment.post_id == id_post,
+            )
 
-        if not comments:
+        if not comments_query.all():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 details=f"Comments for the post with id: {id_post} not found")
-        else:
+
+        if search:
+            comments = comments_query.filter(
+                models.Comment.content.ilike(f"%{search}%")
+            ).limit(limit).offset(skip).all()
             return comments
+        else:
+            return comments_query.all()
     
+
+
 
 @router.get("/posts/{id_post}/comments/{id_comment}", response_model=schemas.UserResponse)
 def get_a_comment(id_post: int, id_comment: int, db: Session=Depends(database.get_db),
@@ -79,6 +92,8 @@ def get_a_comment(id_post: int, id_comment: int, db: Session=Depends(database.ge
             return comment
 
     
+
+
 
 @router.delete("/posts/{id_post}/comments/{id_comment}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_comment(id_post: int, id_comment: int, db: Session=Depends(database.get_db),
@@ -109,6 +124,8 @@ def delete_comment(id_post: int, id_comment: int, db: Session=Depends(database.g
     db.commit()
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 
 
 @router.put("/posts/{id_post}/comments/{id_comment}", response_model=schemas.CommentResponse)
