@@ -1,4 +1,5 @@
 venv/
 .env
 notes/
+*.pyc
 **/__pycache__
