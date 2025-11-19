@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     DB_HOST: str
     DB_PORT: str
 
-    model_config = SettingsConfigDict(env_file=".env")
+    class Config:
+        env_file = ".env"
 
 
 settings = Settings()
