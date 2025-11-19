@@ -46,3 +46,18 @@ class Comment(Base):
 
     owner = relationship("User") 
     parent_post = relationship("Post")
+    
+
+class Likes_posts(Base):
+    __tablename__ = "likes_posts"
+
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    post_id = Column(Integer, ForeignKey("posts.id", ondelete="CASCADE"), primary_key=True)
+
+
+class Like_comments(Base):
+    __tablename__ = "likes_comments"
+
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    comment_id = Column(Integer, ForeignKey("comments.id", ondelete="CASCADE"), primary_key=True)
+

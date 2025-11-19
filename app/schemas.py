@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime 
-from typing import Optional
+from typing import Optional, Literal
 
 
 # schema for the user creation
@@ -75,4 +75,8 @@ class CommentResponse(BaseModel):
         from_attributes = True
 
 
+class Like(BaseModel):
+    target_id: int # 'target_id' will be the post_id or comment_id
+    direction: Literal[0, 1] # 'direction' is 1 for like, 0 for unlike
+    target_type: Literal['post', 'comment'] # 'target_type' specifies what is being liked
 
