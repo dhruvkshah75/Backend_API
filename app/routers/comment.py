@@ -1,6 +1,6 @@
 from fastapi import HTTPException, status, APIRouter, Depends, Response
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from .. import schemas, oauth2, database, models
 from typing import List, Optional
 
@@ -35,12 +35,12 @@ def create_comment(id_post: int, Comment_details: schemas.CommentCreate, db: Ses
 
 
 
-@router.get("/posts/{id_post}/comments", response_model=List[schemas.CommentResponse])
+@router.get("/posts/{id_post}/comments", response_model=List[schemas.CommentOut])
 def get_all_comments(id_post: int, db: Session=Depends(database.get_db),
                      current_user: dict = Depends(oauth2.get_current_user), limit: int=10, skip: int=0, 
                      search: Optional[str] = ""):
     """
-    Get all the comments to a single post
+    Get all the comments associated to a single post
     """
     
     parent_post = db.query(models.Post).filter(models.Post.id == id_post).first()
@@ -49,9 +49,13 @@ def get_all_comments(id_post: int, db: Session=Depends(database.get_db),
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f'Post with the id: {id_post} not found')
     else:
-        comments_query = db.query(models.Comment).filter(
-                models.Comment.post_id == id_post,
-            )
+        comments_query = db.query(models.Comment, func.count(models.Like_comments.comment_id).label("likes")).join(
+            models.Like_comments,
+            models.Like_comments.comment_id == models.Comment.id,
+            isouter=True
+        ).group_by(models.Comment.id).filter(
+            models.Comment.post_id == id_post,
+        )
 
         if not comments_query.all():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -68,7 +72,7 @@ def get_all_comments(id_post: int, db: Session=Depends(database.get_db),
 
 
 
-@router.get("/posts/{id_post}/comments/{id_comment}", response_model=schemas.UserResponse)
+@router.get("/posts/{id_post}/comments/{id_comment}", response_model=schemas.CommentOut)
 def get_a_comment(id_post: int, id_comment: int, db: Session=Depends(database.get_db),
                   current_user: dict = Depends(oauth2.get_current_user)):
     """
@@ -80,7 +84,13 @@ def get_a_comment(id_post: int, id_comment: int, db: Session=Depends(database.ge
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f'Post with the id: {id_post} not found')
     else:
-        comment = db.query(models.Comment).filter(
+        comment = db.query(models.Comment, func.count(models.Like_comments.comment_id).label("likes")).join(
+            models.Like_comments,
+            models.Like_comments.comment_id == models.Comment.id,
+            isouter=True
+        ).group_by(
+            models.Comment.id
+        ).filter(
             models.Comment.post_id == id_post, 
             models.Comment.id == id_comment
         ).first()

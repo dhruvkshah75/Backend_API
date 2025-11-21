@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime 
-from typing import Optional, Literal
+from typing import Optional, Literal, Union
 
 
 # schema for the user creation
@@ -57,6 +57,14 @@ class PostResponse(PostBase):
         from_attributes = True
 
 
+class PostOut(BaseModel):
+    Post: PostResponse  # This nests your existing post structure
+    likes: int          # This catches the count
+
+    class Config:
+        from_attributes = True
+
+
 
 class CommentCreate(BaseModel):
     content: str
@@ -75,8 +83,18 @@ class CommentResponse(BaseModel):
         from_attributes = True
 
 
+class CommentOut(BaseModel):
+    Comment: CommentResponse
+    likes: int
+    class Config:
+        from_attributes = True
+
+
 class Like(BaseModel):
     target_id: int # 'target_id' will be the post_id or comment_id
     direction: Literal[0, 1] # 'direction' is 1 for like, 0 for unlike
     target_type: Literal['post', 'comment'] # 'target_type' specifies what is being liked
 
+"""
+We will return the no of likes when we query the post or column within the post routes 
+"""
