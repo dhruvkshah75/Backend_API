@@ -1,3 +1,7 @@
+gunicorn
+
+uvicorn[standard]
+
 aiosmtplib==4.0.2
 alembic==1.17.2
 annotated-doc==0.0.3
