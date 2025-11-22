@@ -22,6 +22,10 @@ app.include_router(auth.router)
 app.include_router(comment.router)
 app.include_router(likes.router)
 
+# In main.py
+from .config import settings
+print(f"DEBUG: Current Database URL is: {settings.database_url}")
+
 @app.get("/")
 def root():
     return {

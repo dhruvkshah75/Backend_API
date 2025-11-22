@@ -1,10 +1,55 @@
-version: "3"
+# docker-compose.yml
+
 services:
+  # 1. PostgreSQL Database Service
+  postgres:
+    image: postgres:14-alpine
+    environment:
+      # Internal credentials for the DB container
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123 
+      POSTGRES_DB: fastapi
+    
+    volumes:
+      # Persist data (users, posts) even if container is removed
+      - postgres_data_volume:/var/lib/postgresql/data
+      
+    ports:
+      # Map Host Port 5432 to Container Port 5432
+      # NOTE: If you have a local Postgres running, change "5432:5432" to "5433:5432"
+      - "5432:5432" 
+      
+    # Health check ensures DB is ready before API starts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. FastAPI Application Service
   nexusapi:
     build: .
+    # COMMAND: Run migrations -> Start Gunicorn
+    command: >
+      sh -c "alembic upgrade head &&
+             gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:8000"
+    
     ports:
-      - 8000:8000
+      # Map Host Port 8000 to Container Port 8000 (for Postman access)
+      - "8000:8000" 
+    
+    # Load generic secrets (SECRET_KEY, etc.) from .env
     env_file:
-      - ./.env
+      - ./.env 
+      
     environment:
-      -
+      # CRITICAL: Override local DB URL with Docker internal URL
+      # Hostname MUST be 'postgres' (the service name above)
+      DATABASE_URL: postgresql://postgres:password123@postgres:5432/fastapi
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data_volume:
