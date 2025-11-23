@@ -80,6 +80,10 @@ def get_user_posts(id: int, db: Session=Depends(get_db),
     else:
         posts_by_user_query = db.query(models.Post).filter(models.Post.owner_id == id)
 
+        if not posts_by_user_query.all():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+                                detail="No posts made yet")
+
         if search:
             posts_by_user = posts_by_user_query.filter(
                 or_(
